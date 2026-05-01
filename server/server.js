@@ -30,10 +30,10 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// CORS
+// CORS - More flexible for production
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: true, // Reflects the request origin, making it work for any Railway domain
     credentials: true,
   })
 );
@@ -41,6 +41,14 @@ app.use(
 // Body Parser
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Simple Request Logger for Debugging
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  }
+  next();
+});
 
 // Logger (dev only)
 if (process.env.NODE_ENV === 'development') {
@@ -60,13 +68,16 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Serve frontend in production
+// Serve frontend if it exists
 const path = require('path');
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/dist')));
+const fs = require('fs');
+const clientDistPath = path.join(__dirname, '../client/dist');
+
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
 
   app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../client/dist/index.html'));
+    res.sendFile(path.join(clientDistPath, 'index.html'));
   });
 } else {
   // 404 Handler
