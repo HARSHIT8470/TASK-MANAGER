@@ -60,10 +60,20 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// 404 Handler
-app.use((req, res) => {
-  res.status(404).json({ message: `Route ${req.originalUrl} not found` });
-});
+// Serve frontend in production
+const path = require('path');
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../client/dist')));
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '../client/dist/index.html'));
+  });
+} else {
+  // 404 Handler
+  app.use((req, res) => {
+    res.status(404).json({ message: `Route ${req.originalUrl} not found` });
+  });
+}
 
 // Global Error Handler
 app.use((err, req, res, next) => {
